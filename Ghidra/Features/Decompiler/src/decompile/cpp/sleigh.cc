@@ -552,19 +552,28 @@ void Sleigh::reset(LoadImage *ld,ContextDatabase *c_db)
 
 /// The .sla file from the document store is loaded and cache objects are prepared
 /// \param store is the document store containing the main \<sleigh> tag.
-void Sleigh::initialize(DocumentStorage &store)
+void Sleigh::initialize(StorageVariant &sv)
 
 {
   if (!isInitialized()) {	// Initialize the base if not already
+unique_ptr<ifstream> upifs;
+istream* isp{visit(alternative {
+  [&](DocumentStorage &store) -> istream* {
     const Element *el = store.getTag("sleigh");
     if (el == (const Element *)0)
       throw LowlevelError("Could not find sleigh tag");
-    sla::FormatDecode decoder(this);
-    ifstream s(el->getContent(), std::ios_base::binary);
-    if (!s)
+    upifs = make_unique<ifstream>(el->getContent(), std::ios_base::binary);
+    if (!upifs)
       throw LowlevelError("Could not open .sla file: " + el->getContent());
+    return upifs.get();
+  },
+  [](istream &stream) -> istream* {
+    return &stream;
+  },
+}, sv)};
+    istream& s{*isp};
+    sla::FormatDecode decoder(this);
     decoder.ingestStream(s);
-    s.close();
     decode(decoder);
   }
   else

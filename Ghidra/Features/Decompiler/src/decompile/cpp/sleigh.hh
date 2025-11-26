@@ -21,7 +21,28 @@
 
 #include "sleighbase.hh"
 
+#include <memory>
+#include <variant>
+
 namespace ghidra {
+
+// ---------------------------------------------------------------------
+
+using std::istream;
+using std::variant;
+using std::visit;
+using std::unique_ptr;
+using std::make_unique;
+
+typedef variant<DocumentStorage, istream> StorageVariant;
+
+template<class... Ts>
+struct alternative : Ts... { using Ts::operator()...; };
+
+template<class... Ts>
+alternative(Ts...) -> alternative<Ts...>;
+
+// ---------------------------------------------------------------------
 
 class LoadImage;
 
@@ -174,7 +195,7 @@ public:
   Sleigh(LoadImage *ld,ContextDatabase *c_db);		///< Constructor
   virtual ~Sleigh(void);				///< Destructor
   void reset(LoadImage *ld,ContextDatabase *c_db);	///< Reset the engine for a new program
-  virtual void initialize(DocumentStorage &store);
+  virtual void initialize(StorageVariant &store);
   virtual void registerContext(const string &name,int4 sbit,int4 ebit);
   virtual void setContextDefault(const string &nm,uintm val);
   virtual void allowContextSet(bool val) const;
